@@ -1,4 +1,4 @@
-const { Comment, Pizza } = require('../models');
+const { Comment, Pizza } = require("../models");
 
 const commentController = {
     // add comment to pizza
@@ -6,17 +6,31 @@ const commentController = {
         console.log(body);
         Comment.create(body)
             .then(({ _id }) => {
+                console.log(_id);
                 return Pizza.findOneAndUpdate(
-                    { _id: params.Pizza },
+                    { _id: params.pizzaId },
                     { $push: { comments: _id } },
-                    { new: ture }
+                    { new: true, runValidators: true }
                 );
             })
             .then(dbPizzaData => {
-                if (!dbPizzaData) {
-                    res.status(404).json({ message: 'No pizza found with this id!' });
-                    return;
-                }
+                if (!dbPizzaData) return res.status(404).json({ message: "No pizza found with this id!" });
+
+                res.json(dbPizzaData);
+            })
+            .catch(err => res.json(err));
+    },
+
+    // add reply
+    addReply({ params, body }, res) {
+        Comment.findOneAndUpdate(
+            { _id: params.commentId },
+            { $push: { replies: body } },
+            { new: true, runValidators: true }
+        )
+            .then(dbPizzaData => {
+                if (!dbPizzaData) return res.status(404).json({ message: "No pizza found with this id!"});
+
                 res.json(dbPizzaData);
             })
             .catch(err => res.json(err));
@@ -27,7 +41,7 @@ const commentController = {
         Comment.findOneAndDelete({ _id: params.commentId })
             .then(deletedComment => {
                 if (!deletedComment) return res.status(404).json({ message: "No comment found with this id!" });
-    
+
                 return Pizza.findOneAndUpdate(
                     { _id: params.pizzaId },
                     { $pull: { comments: params.commentId } },
@@ -36,11 +50,22 @@ const commentController = {
             })
             .then(dbPizzaData => {
                 if (!dbPizzaData) return res.status(404).json({ message: "No pizza found with this id!" });
-    
+
                 res.json(dbPizzaData);
             })
             .catch(err => res.json(err));
     },
+
+    // remove reply
+    removeReply({ params }, res) {
+        Comment.findOneAndUpdate(
+            { _id: params.commentId },
+            { $pull: { replies: {replyId: params.replyId } } },
+            { new: true }
+        )
+            .then(dbPizzaData => res.json(dbPizzaData))
+            .catch(err => res.json(err));
+    }
 };
 
 module.exports = commentController;
